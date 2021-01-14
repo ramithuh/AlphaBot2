@@ -231,12 +231,12 @@ void TeleopAlphaBot::keyLoop()
     {
       case KEYCODE_LEFT:
         ROS_DEBUG("LEFT");
-        angular_ = 1.0;
+        angular_ = 5.0;
         dirty = true;
         break;
       case KEYCODE_RIGHT:
         ROS_DEBUG("RIGHT");
-        angular_ = -1.0;
+        angular_ = -5.0;
         dirty = true;
         break;
       case KEYCODE_UP:
