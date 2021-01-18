@@ -32,25 +32,41 @@ def _clip(value, minimum, maximum):
 	return value
 
 class Motor:
-	def __init__(self, forward_pin, backward_pin):
+	def __init__(self, forward_pin, backward_pin, enable):
 		self._forward_pin = forward_pin
 		self._backward_pin = backward_pin
+		self._enable_pin = enable
 		GPIO.setup(forward_pin, GPIO.OUT)
 		GPIO.setup(backward_pin, GPIO.OUT)
-
-		self._forward_pwm = GPIO.PWM(forward_pin, _FREQUENCY)
-		self._backward_pwm = GPIO.PWM(backward_pin, _FREQUENCY)
+		GPIO.setup(enable, GPIO.OUT)
+		self._enable_pwm = GPIO.PWM(enable, _FREQUENCY)
+		#self._forward_pwm = GPIO.PWM(forward_pin, _FREQUENCY)
+		#self._backward_pwm = GPIO.PWM(backward_pin, _FREQUENCY)
 
 	def move(self, speed_percent):
 		speed = _clip(abs(speed_percent), 0, 100)
 
 		# A positive speed moves wheels forward, negative moves backwards
-		if speed_percent >= 0:
-			self._forward_pwm.start(speed)
-			self._backward_pwm.start(0)
+		if speed_percent == 0:
+			self._enable_pwm.start(0)
+			self._enable_pwm.ChangeDutyCycle(0)
+			GPIO.output(self._forward_pin,GPIO.HIGH)
+			GPIO.output(self._backward_pin,GPIO.LOW)
+		elif speed_percent > 0:
+			#self._forward_pwm.start(speed)
+			#self._backward_pwm.start(0)
+			self._enable_pwm.start(0)
+			self._enable_pwm.ChangeDutyCycle(100)
+			GPIO.output(self._forward_pin,GPIO.HIGH)
+			GPIO.output(self._backward_pin,GPIO.LOW)
+
 		else:
-			self._backward_pwm.start(speed)
-			self._forward_pwm.start(0)
+			#self._backward_pwm.start(speed)
+			#self._forward_pwm.start(0)
+			self._enable_pwm.start(0)
+			self._enable_pwm.ChangeDutyCycle(100)
+			GPIO.output(self._forward_pin,GPIO.LOW)
+			GPIO.output(self._backward_pin,GPIO.HIGH)
 
 class motion_driver:
 	def __init__(self, in1=13, in2=12, in3=21, in4=20, ena=6, enb=26, pa=50, pb=50):
@@ -74,18 +90,18 @@ class motion_driver:
 		GPIO.setup(self.IN4,GPIO.OUT)
 		GPIO.setup(self.ENA,GPIO.OUT)
 		GPIO.setup(self.ENB,GPIO.OUT)
-		self.PWMA = GPIO.PWM(self.ENA,500)
-		self.PWMB = GPIO.PWM(self.ENB,500)
-		self.PWMA.start(self.PA)
-		self.PWMB.start(self.PB)
+		##self.PWMA = GPIO.PWM(self.ENA,500)
+		##self.PWMB = GPIO.PWM(self.ENB,500)
+		##self.PWMA.start(self.PA)
+		##self.PWMB.start(self.PB)
 
 		# Set ENA/ENB to high
-		GPIO.output(self.ENA, GPIO.HIGH)
-		GPIO.output(self.ENB, GPIO.HIGH)
+		#GPIO.output(self.ENA, GPIO.HIGH)
+		#GPIO.output(self.ENB, GPIO.HIGH)
 
-		# Set forward
-		self.PWMA.ChangeDutyCycle(self.PA)
-		self.PWMB.ChangeDutyCycle(self.PB)
+		## Set forward
+		#self.PWMA.ChangeDutyCycle(self.PA)
+		#self.PWMB.ChangeDutyCycle(self.PB)
 		GPIO.output(self.IN1,GPIO.HIGH)
 		GPIO.output(self.IN2,GPIO.LOW)
 		GPIO.output(self.IN3,GPIO.HIGH)
@@ -98,8 +114,8 @@ class motion_driver:
 		self.rate = rospy.Rate(rospy.get_param('~rate', 10))
 		self._max_speed = rospy.get_param('~max_speed', 0.25)
 		self._wheel_base = rospy.get_param('~wheel_base', 0.093)
-		self._left_motor = Motor(self.IN1, self.IN2)
-		self._right_motor = Motor(self.IN3, self.IN4)
+		self._left_motor  = Motor(self.IN1, self.IN2, self.ENA)
+		self._right_motor = Motor(self.IN3, self.IN4, self.ENB)
 		self._left_speed_percent = 0
 		self._right_speed_percent = 0
 
