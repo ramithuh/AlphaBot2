@@ -31,6 +31,98 @@ def _clip(value, minimum, maximum):
 		return maximum
 	return value
 
+lastTurnTime = 0;
+
+def move_both(motor1, motor2,speed_percent1,speed_percent2):
+	global lastTurnTime
+	speed = _clip(abs(speed_percent1), 0, 100)
+
+	left_offset_speed  = -10;
+	right_offset_speed = 19.5
+	
+	speed_l = _clip(abs(speed_percent1+left_offset_speed), 0, 100)
+	speed_r = _clip(abs(speed_percent2+right_offset_speed), 0, 100)
+
+
+	if(speed_percent1 * speed_percent2 < 0 ): #different directions
+		if(abs(lastTurnTime-time.time()) > 5):
+			lastTurnTime = time.time();
+
+			if(speed_percent1 > 0):
+				motor1._enable_pwm.start(0)
+				motor2._enable_pwm.start(0)
+
+				
+				motor1._enable_pwm.ChangeDutyCycle(speed*5)
+				GPIO.output(motor1._forward_pin,GPIO.HIGH)
+				GPIO.output(motor1._backward_pin,GPIO.LOW)
+				
+				motor2._enable_pwm.ChangeDutyCycle(speed*5)
+				GPIO.output(motor2._forward_pin,GPIO.LOW)
+				GPIO.output(motor2._backward_pin,GPIO.HIGH)
+
+				#time.sleep(0.01)
+				#rospy.loginfo("output=  "+str(speed*5)+".")
+			else:
+				motor1._enable_pwm.start(0)
+				motor2._enable_pwm.start(0)
+
+				
+				motor1._enable_pwm.ChangeDutyCycle(speed*5)
+				GPIO.output(motor1._forward_pin,GPIO.LOW)
+				GPIO.output(motor1._backward_pin,GPIO.HIGH)
+				
+				motor2._enable_pwm.ChangeDutyCycle(speed*5)
+				GPIO.output(motor2._forward_pin,GPIO.HIGH)
+				GPIO.output(motor2._backward_pin,GPIO.LOW)
+
+			time.sleep(0.1)
+			#rospy.loginfo("output=  "+str(speed*5)+".")
+			motor1._enable_pwm.start(0)
+			motor1._enable_pwm.ChangeDutyCycle(0)
+			motor2._enable_pwm.start(0)
+			motor2._enable_pwm.ChangeDutyCycle(0)
+
+	elif speed_percent1 > 0:
+		motor1._enable_pwm.start(0)
+		motor2._enable_pwm.start(0)
+
+		
+		motor1._enable_pwm.ChangeDutyCycle(speed_l)
+		GPIO.output(motor1._forward_pin,GPIO.HIGH)
+		GPIO.output(motor1._backward_pin,GPIO.LOW)
+		
+		motor2._enable_pwm.ChangeDutyCycle(speed_r)
+		GPIO.output(motor2._forward_pin,GPIO.HIGH)
+		GPIO.output(motor2._backward_pin,GPIO.LOW)
+
+		#time.sleep(0.005)
+		rospy.loginfo("output=  "+str(speed)+".")
+
+	else:
+		motor1._enable_pwm.start(0)
+		motor2._enable_pwm.start(0)
+
+		
+		motor1._enable_pwm.ChangeDutyCycle(speed)
+		GPIO.output(motor1._forward_pin,GPIO.LOW)
+		GPIO.output(motor1._backward_pin,GPIO.HIGH)
+
+		
+		motor2._enable_pwm.ChangeDutyCycle(speed)
+		GPIO.output(motor2._forward_pin,GPIO.LOW)
+		GPIO.output(motor2._backward_pin,GPIO.HIGH)
+
+		#time.sleep(0.005)
+		rospy.loginfo("output=  "+str(speed)+".")
+	
+	
+	# motor1._enable_pwm.start(0)
+	# motor1._enable_pwm.ChangeDutyCycle(0)
+	# motor2._enable_pwm.start(0)
+	# motor2._enable_pwm.ChangeDutyCycle(0)
+
+
 class Motor:
 	def __init__(self, forward_pin, backward_pin, enable):
 		self._forward_pin = forward_pin
@@ -47,26 +139,28 @@ class Motor:
 		speed = _clip(abs(speed_percent), 0, 100)
 
 		# A positive speed moves wheels forward, negative moves backwards
-		if speed_percent == 0:
-			self._enable_pwm.start(0)
-			self._enable_pwm.ChangeDutyCycle(0)
-			GPIO.output(self._forward_pin,GPIO.HIGH)
-			GPIO.output(self._backward_pin,GPIO.LOW)
-		elif speed_percent > 0:
+
+		
+
+		if speed_percent > 0:
 			#self._forward_pwm.start(speed)
 			#self._backward_pwm.start(0)
 			self._enable_pwm.start(0)
-			self._enable_pwm.ChangeDutyCycle(100)
+			self._enable_pwm.ChangeDutyCycle(speed)
 			GPIO.output(self._forward_pin,GPIO.HIGH)
 			GPIO.output(self._backward_pin,GPIO.LOW)
+
+			rospy.loginfo("output=  "+str(speed)+".")
 
 		else:
 			#self._backward_pwm.start(speed)
 			#self._forward_pwm.start(0)
 			self._enable_pwm.start(0)
-			self._enable_pwm.ChangeDutyCycle(100)
+			self._enable_pwm.ChangeDutyCycle(speed)
 			GPIO.output(self._forward_pin,GPIO.LOW)
 			GPIO.output(self._backward_pin,GPIO.HIGH)
+
+			rospy.loginfo("output=  "+str(speed)+".")
 
 class motion_driver:
 	def __init__(self, in1=13, in2=12, in3=21, in4=20, ena=6, enb=26, pa=50, pb=50):
@@ -166,8 +260,9 @@ class motion_driver:
 			# may have lost contact with the commander-- stop moving
 			delay = rospy.get_time() - self._last_received
 			if delay < self._timeout:
-				self._left_motor.move(self._left_speed_percent)
-				self._right_motor.move(self._right_speed_percent)
+				# self._left_motor.move(self._left_speed_percent)
+				# self._right_motor.move(self._right_speed_percent)
+				move_both(self._left_motor,self._right_motor,self._left_speed_percent,self._right_speed_percent)
 			else:
 				self._left_motor.move(0)
 				self._right_motor.move(0)
