@@ -32,9 +32,11 @@ def _clip(value, minimum, maximum):
 	return value
 
 lastTurnTime = 0;
+lastFrontTime = 0;
 
 def move_both(motor1, motor2,speed_percent1,speed_percent2):
 	global lastTurnTime
+	global lastFrontTime
 	speed = _clip(abs(speed_percent1), 0, 100)
 
 	left_offset_speed  = -10;
@@ -43,9 +45,12 @@ def move_both(motor1, motor2,speed_percent1,speed_percent2):
 	speed_l = _clip(abs(speed_percent1+left_offset_speed), 0, 100)
 	speed_r = _clip(abs(speed_percent2+right_offset_speed), 0, 100)
 
+	speed_l_ = _clip(abs(speed_percent1), 0, 100)
+	speed_r_ = _clip(abs(speed_percent2), 0, 100)
+
 
 	if(speed_percent1 * speed_percent2 < 0 ): #different directions
-		if(abs(lastTurnTime-time.time()) > 5):
+		if(abs(lastTurnTime-time.time()) > 0.5):
 			lastTurnTime = time.time();
 
 			if(speed_percent1 > 0):
@@ -83,22 +88,77 @@ def move_both(motor1, motor2,speed_percent1,speed_percent2):
 			motor2._enable_pwm.start(0)
 			motor2._enable_pwm.ChangeDutyCycle(0)
 
-	elif speed_percent1 > 0:
-		motor1._enable_pwm.start(0)
-		motor2._enable_pwm.start(0)
+	elif speed_percent1 > 0 and speed_percent1==speed_percent2: #linear same velocity 
+		if(abs(lastFrontTime-time.time()) > 0.1):
+			lastFrontTime = time.time()
+			motor1._enable_pwm.start(0)
+			motor2._enable_pwm.start(0)
 
-		
-		motor1._enable_pwm.ChangeDutyCycle(speed_l)
-		GPIO.output(motor1._forward_pin,GPIO.HIGH)
-		GPIO.output(motor1._backward_pin,GPIO.LOW)
-		
-		motor2._enable_pwm.ChangeDutyCycle(speed_r)
-		GPIO.output(motor2._forward_pin,GPIO.HIGH)
-		GPIO.output(motor2._backward_pin,GPIO.LOW)
+			
+			motor1._enable_pwm.ChangeDutyCycle(speed_l)
+			GPIO.output(motor1._forward_pin,GPIO.HIGH)
+			GPIO.output(motor1._backward_pin,GPIO.LOW)
+			
+			motor2._enable_pwm.ChangeDutyCycle(speed_r)
+			GPIO.output(motor2._forward_pin,GPIO.HIGH)
+			GPIO.output(motor2._backward_pin,GPIO.LOW)
 
-		#time.sleep(0.005)
-		rospy.loginfo("output=  "+str(speed)+".")
+			#time.sleep(0.005)
+			#rospy.loginfo("output=  "+str(speed)+".")
+			time.sleep(0.1)
+			#rospy.loginfo("output=  "+str(speed*5)+".")
+			motor1._enable_pwm.start(0)
+			motor1._enable_pwm.ChangeDutyCycle(0)
+			motor2._enable_pwm.start(0)
+			motor2._enable_pwm.ChangeDutyCycle(0)
 
+	elif speed_percent1 > 0: ### linear and angular both
+		if(speed_percent1 > speed_percent2):  #turining right
+			if(abs(lastTurnTime-time.time()) > 0.5):
+				lastFrontTime = time.time()
+				motor1._enable_pwm.start(0)
+				motor2._enable_pwm.start(0)
+
+				
+				motor1._enable_pwm.ChangeDutyCycle(speed)
+				GPIO.output(motor1._forward_pin,GPIO.HIGH)
+				GPIO.output(motor1._backward_pin,GPIO.LOW)
+				
+				motor2._enable_pwm.ChangeDutyCycle(speed)
+				GPIO.output(motor2._forward_pin,GPIO.HIGH)
+				GPIO.output(motor2._backward_pin,GPIO.LOW)
+
+				#time.sleep(0.005)
+				#rospy.loginfo("output=  "+str(speed)+".")
+				time.sleep(0.1)
+				#rospy.loginfo("output=  "+str(speed*5)+".")
+				motor1._enable_pwm.start(0)
+				motor1._enable_pwm.ChangeDutyCycle(0)
+				motor2._enable_pwm.start(0)
+				motor2._enable_pwm.ChangeDutyCycle(0)
+		else:
+			if(abs(lastTurnTime-time.time()) > 0.5):
+				lastFrontTime = time.time()
+				motor1._enable_pwm.start(0)
+				motor2._enable_pwm.start(0)
+
+				
+				motor1._enable_pwm.ChangeDutyCycle(speed_l)
+				GPIO.output(motor1._forward_pin,GPIO.HIGH)
+				GPIO.output(motor1._backward_pin,GPIO.LOW)
+				
+				motor2._enable_pwm.ChangeDutyCycle(speed_r)
+				GPIO.output(motor2._forward_pin,GPIO.HIGH)
+				GPIO.output(motor2._backward_pin,GPIO.LOW)
+
+				#time.sleep(0.005)
+				#rospy.loginfo("output=  "+str(speed)+".")
+				time.sleep(0.1)
+				#rospy.loginfo("output=  "+str(speed*5)+".")
+				motor1._enable_pwm.start(0)
+				motor1._enable_pwm.ChangeDutyCycle(0)
+				motor2._enable_pwm.start(0)
+				motor2._enable_pwm.ChangeDutyCycle(0)
 	else:
 		motor1._enable_pwm.start(0)
 		motor2._enable_pwm.start(0)
@@ -114,7 +174,7 @@ def move_both(motor1, motor2,speed_percent1,speed_percent2):
 		GPIO.output(motor2._backward_pin,GPIO.HIGH)
 
 		#time.sleep(0.005)
-		rospy.loginfo("output=  "+str(speed)+".")
+		#rospy.loginfo("output=  "+str(speed)+".")
 	
 	
 	# motor1._enable_pwm.start(0)
@@ -160,7 +220,7 @@ class Motor:
 			GPIO.output(self._forward_pin,GPIO.LOW)
 			GPIO.output(self._backward_pin,GPIO.HIGH)
 
-			rospy.loginfo("output=  "+str(speed)+".")
+			#rospy.loginfo("output=  "+str(speed)+".")
 
 class motion_driver:
 	def __init__(self, in1=13, in2=12, in3=21, in4=20, ena=6, enb=26, pa=50, pb=50):
@@ -229,13 +289,16 @@ class motion_driver:
 
 	def velocity_received_callback(self, message):
 		self._last_received = rospy.get_time()
-		rospy.loginfo("Node 'motion' velocity message received")
 		# Extract linear and angular velocities from the message
 		linear = message.linear.x
 		angular = message.angular.z
 
-		rospy.loginfo("Node 'motion' linear=  "+str(linear)+".")
-		rospy.loginfo("Node 'motion' angular= "+str(angular)+".")
+		if(message.linear.x > 0 or message.angular.z >0):
+			rospy.loginfo("Node 'motion' velocity message received")
+		
+			rospy.loginfo("Node 'motion' linear=  "+str(linear)+".")
+			rospy.loginfo("Node 'motion' angular= "+str(angular)+".")
+
 
 		# Calculate wheel speeds in m/s
 		left_speed  = linear - angular*self._wheel_base/2
@@ -249,8 +312,8 @@ class motion_driver:
 		# duty cycle that we can apply to each motor.
 		self._left_speed_percent  = (100 * left_speed/self._max_speed)
 		self._right_speed_percent = (100 * right_speed/self._max_speed)
-		rospy.loginfo("Node 'motion' velocity message Left= "+str(self._left_speed_percent)+"%")
-		rospy.loginfo("Node 'motion' velocity message Right="+str(self._right_speed_percent)+"%.")
+		#rospy.loginfo("Node 'motion' velocity message Left= "+str(self._left_speed_percent)+"%")
+		#rospy.loginfo("Node 'motion' velocity message Right="+str(self._right_speed_percent)+"%.")
 
 	def run(self):
 		rospy.loginfo("Node 'motion' running.")
